@@ -3,3 +3,9 @@
 body {
   margin: 0;
 }
+
+.custom-rdkit-container svg {
+  width: 100% !important;
+  height: 100% !important;
+  filter: invert(0.9) hue-rotate(180deg);
+}

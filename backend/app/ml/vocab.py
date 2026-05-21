@@ -1,25 +1,13 @@
-import os
-import pandas as pd
 from app.ml.constants import VOCAB_SPECIAL
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CSV_PATH = os.path.join(BASE_DIR, "polyOne_aa.csv")
-
-if not os.path.exists(CSV_PATH):
-    raise FileNotFoundError(f"Не найден датасет для сборки словаря по пути: {CSV_PATH}")
-
-df = pd.read_csv(CSV_PATH)
-df = df.dropna(subset=["smiles"])
-
-def tokenize(smiles):
-    return list(smiles)
-
-all_tokens = set()
-for s in df["smiles"]:
-    all_tokens.update(tokenize(s))
-
-tokens = VOCAB_SPECIAL + sorted(list(all_tokens))
+# Хардкодим ровно тот список токенов, который зафиксирован в весах модели
+tokens = [
+    '<pad>', '<bos>', '<eos>', '<unk>', '#', '%', '(', ')', '*', '+', 
+    '-', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
+    '=', 'B', 'C', 'F', 'H', 'I', 'N', 'O', 'P', 'S', '[', '\\', 
+    ']', 'c', 'i', 'l', 'n', 'o', 'r', 's'
+]
 
 token2idx = {t: i for i, t in enumerate(tokens)}
 idx2token = {i: t for t, i in token2idx.items()}
-vocab_size = len(token2idx)
+vocab_size = len(tokens)

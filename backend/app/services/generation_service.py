@@ -18,7 +18,7 @@ def generate_polymer_smiles(
     tsb: float, 
     ym: float, 
     rho: float, 
-    num_samples: int = 1
+    num_samples: int = 20
 ):
     # Вызываем тяжелый ML-инференс
     ml_result = ml_generate_smiles(

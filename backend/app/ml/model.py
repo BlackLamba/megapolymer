@@ -56,7 +56,7 @@ class ConditionalTransformerVAE(nn.Module):
         return self.decode(z, feats, tgt_inp), mu, logvar
 
 
-def generate_smiles_conditional(model, target_feats, num_samples=5, temperature=0.8, device="cpu"):
+def generate_smiles_conditional(model, target_feats, num_samples=5, temperature=0.5, device="cpu"):
     model.eval()
     with torch.no_grad():
         z = torch.randn(num_samples, LATENT_DIM).to(device)
@@ -70,20 +70,23 @@ def generate_smiles_conditional(model, target_feats, num_samples=5, temperature=
         finished = torch.zeros(num_samples, dtype=torch.bool).to(device)
 
         for _ in range(MAX_LEN - 1):
-            emb = model.emb(sequences) + model.pos_emb[:, :sequences.size(1)]
-            tgt_mask = nn.Transformer.generate_square_subsequent_mask(sequences.size(1)).to(device)
-            
-            out = model.decoder(tgt=emb, memory=z_dec, tgt_mask=tgt_mask)
-            logits = model.out(out[:, -1]) / temperature
-            probs = torch.softmax(logits, dim=-1)
-            
-            next_token = torch.multinomial(probs, num_samples=1).squeeze(1)
-            next_token[finished] = token2idx['<pad>']
-            finished = finished | (next_token == token2idx['<eos>'])
-            
-            sequences = torch.cat([sequences, next_token.unsqueeze(1)], dim=1)
-            if finished.all():
-                break
+                    emb = model.emb(sequences) + model.pos_emb[:, :sequences.size(1)]
+                    tgt_mask = nn.Transformer.generate_square_subsequent_mask(sequences.size(1)).to(device)
+                    
+                    out = model.decoder(tgt=emb, memory=z_dec, tgt_mask=tgt_mask)
+                    logits = model.out(out[:, -1]) / temperature
+                    
+                    probs = torch.softmax(logits, dim=-1)
+                    
+                    next_token = torch.multinomial(probs, num_samples=1).squeeze(1)
+                    
+                    
+                    next_token[finished] = token2idx['<pad>']
+                    finished = finished | (next_token == token2idx['<eos>'])
+                    
+                    sequences = torch.cat([sequences, next_token.unsqueeze(1)], dim=1)
+                    if finished.all():
+                        break
 
         smiles_list = []
         for seq in sequences:

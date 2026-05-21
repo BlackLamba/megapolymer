@@ -1,7 +1,6 @@
 import os
 import torch
-import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
+import joblib
 from app.ml.model import ConditionalTransformerVAE
 from app.ml.vocab import vocab_size
 from app.ml.constants import EMB_DIM, LATENT_DIM, N_HEADS, FF_DIM, NUM_LAYERS, MAX_LEN, NUM_FEATURES
@@ -32,10 +31,8 @@ def load_model():
     if not os.path.exists(weights_path):
         raise FileNotFoundError(f"Файл весов модели не найден по пути: {weights_path}")
 
-    # Загружаем сохраненный чекпоинт
     state = torch.load(weights_path, map_location=DEVICE)
     
-    # Безопасно извлекаем веса, если файл оказался полным чекпоинтом обучения
     if isinstance(state, dict) and "model_state_dict" in state:
         model.load_state_dict(state["model_state_dict"])
     else:
@@ -48,16 +45,14 @@ def load_model():
     return MODEL
 
 def load_scaler():
-    """Фиттит MinMaxScaler на оригинальном датасете для корректного инференса"""
+    """Загружает предобученный и сохраненный в ноутбуке скалер"""
     global SCALER
     if SCALER is not None:
         return SCALER
 
-    CSV_PATH = os.path.join(BASE_DIR, "polyOne_aa.csv")
-    df = pd.read_csv(CSV_PATH).dropna(subset=["smiles"])
-    
-    scaler = MinMaxScaler()
-    scaler.fit(df[NUM_FEATURES])
-    
-    SCALER = scaler
+    scaler_path = os.path.join(BASE_DIR, "scaler.joblib")
+    if not os.path.exists(scaler_path):
+        raise FileNotFoundError(f"Файл скалера не найден по пути: {scaler_path}. Экспортируй его из ноутбука через joblib.dump().")
+        
+    SCALER = joblib.load(scaler_path)
     return SCALER

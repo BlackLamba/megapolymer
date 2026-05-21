@@ -18,12 +18,7 @@ export const ExperimentsPage = () => {
 
   const navigate = useNavigate()
 
-  const handleLogout = () => {
-    auth.logout()
-    navigate("/login")
-  }
-
-  // 📡 LOAD FUNCTION (reusable)
+  // 📡 LOAD FUNCTION
   const loadExperiments = async () => {
     try {
       const res = await getExperiments()
@@ -35,12 +30,12 @@ export const ExperimentsPage = () => {
     }
   }
 
-  // 🚀 initial load
+  // 🚀 Initial load
   useEffect(() => {
     loadExperiments()
   }, [])
 
-  // 🔄 polling (CLEAN VERSION)
+  // 🔄 Polling for updates
   useEffect(() => {
     let active = true
 
@@ -55,13 +50,17 @@ export const ExperimentsPage = () => {
     }
   }, [])
 
-  // 🔎 filtered + sorted (memoized)
+  // 🔎 FILTERED BY NESTED MOLECULES
   const filteredData = useMemo(() => {
+    if (!search.trim()) return data
     return data.filter((exp) =>
-      exp.smiles?.toLowerCase().includes(search.toLowerCase())
+      exp.molecules?.some((mol) =>
+        mol.smiles?.toLowerCase().includes(search.toLowerCase())
+      )
     )
   }, [data, search])
 
+  // 🔄 SORTED BY CHOSEN METRIC
   const sortedData = useMemo(() => {
     return [...filteredData].sort((a, b) => {
       if (sortBy === "newest") return b.id - a.id
@@ -72,36 +71,28 @@ export const ExperimentsPage = () => {
   }, [filteredData, sortBy])
 
   return (
-
-      <Container>
-      
+    <Container>
       <div className="space-y-6">
-
         {/* HEADER */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">
-              Experiments History
-            </h1>
-
+            <h1 className="text-3xl font-bold">Experiments History</h1>
             <p className="text-zinc-500 mt-2">
-              Stored polymer generation experiments
+              Stored polymer generation experiments and generated candidates
             </p>
           </div>
         </div>
 
         {/* GENERATION PANEL */}
-        {auth.isAuthenticated() && (
-          <GeneratePanel />
-        )}
+        {auth.isAuthenticated() && <GeneratePanel />}
 
         {/* CONTROLS */}
         <div className="flex gap-4">
           <input
-            placeholder="Search by SMILES..."
+            placeholder="Search experiments by candidate SMILES..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 w-full outline-none focus:border-zinc-600 transition"
+            className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 w-full outline-none focus:border-zinc-600 transition text-sm"
           />
 
           <select
@@ -109,107 +100,143 @@ export const ExperimentsPage = () => {
             onChange={(e) =>
               setSortBy(e.target.value as "newest" | "oldest" | "tg")
             }
-            className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 outline-none"
+            className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 outline-none text-sm cursor-pointer text-zinc-300"
           >
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-            <option value="tg">Highest Tg</option>
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="tg">Highest Target Tg</option>
           </select>
         </div>
 
         {/* LOADING */}
         {loading && (
-          <div className="text-zinc-500 animate-pulse">
-            Loading experiments...
+          <div className="text-zinc-500 animate-pulse text-sm">
+            Loading ML prediction history...
           </div>
         )}
 
         {/* EMPTY */}
         {!loading && sortedData.length === 0 && (
-          <div className="text-zinc-500">
-            No experiments found
+          <div className="text-zinc-500 text-sm bg-zinc-900/50 p-8 rounded-2xl text-center border border-zinc-800/40">
+            No experiments found matching the criteria.
           </div>
         )}
 
-        {/* LIST */}
-        <div className="grid gap-4">
+        {/* EXPERIMENTS LIST */}
+        <div className="grid gap-6">
           {sortedData.map((exp) => (
             <div
               key={exp.id}
-              className="group p-5 rounded-3xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition"
+              className="p-6 rounded-3xl bg-zinc-900 border border-zinc-800/80 space-y-6"
             >
-              <div className="flex justify-between items-start">
-
-                {/* LEFT */}
-                <div className="space-y-3">
-
+              {/* TOP: EXPERIMENT INFO & TARGETS */}
+              <div className="flex flex-col gap-4">
+                <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
                   <div>
-                    <p className="text-zinc-500 text-sm">
-                      Experiment #{exp.id}
-                    </p>
-
-                    <p className="font-mono text-green-400 break-all mt-2">
-                      {exp.smiles}
-                    </p>
+                    <h3 className="text-white font-semibold">Experiment #{exp.id}</h3>
+                    <p className="text-[11px] text-zinc-500">Condition Targets Matrix</p>
                   </div>
-
-                  {/* MOLECULE */}
-                  {exp.smiles && (
-                    <MoleculeViewer smiles={exp.smiles} />
-                  )}
-
-                  <div className="flex gap-6 text-sm">
-                    <div>
-                      <p className="text-zinc-500">Tg</p>
-                      <p className="text-white">{exp.tg}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-zinc-500">MW</p>
-                      <p className="text-white">{exp.mw}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-zinc-500">Density</p>
-                      <p className="text-white">{exp.density}</p>
-                    </div>
-                  </div>
-
-                  {/* STATUS */}
-                  {exp.status === "processing" && (
-                    <div className="text-yellow-400 text-sm animate-pulse">
-                      AI is generating molecule...
-                    </div>
-                  )}
+                  
+                  {/* SYSTEM STATUS BADGE */}
+                  <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                    exp.status === "done" ? "bg-green-950/40 text-green-400 border border-green-900/50" :
+                    exp.status === "failed" ? "bg-red-950/40 text-red-400 border border-red-900/50" :
+                    "bg-yellow-950/40 text-yellow-400 border border-yellow-900/50 animate-pulse"
+                  }`}>
+                    {exp.status}
+                  </span>
                 </div>
 
-                {/* RIGHT */}
-                <div className="text-right">
-
-                  <div
-                    className={`px-3 py-1 rounded-full text-sm ${
-                      exp.valid
-                        ? "bg-green-500/20 text-green-400"
-                        : "bg-red-500/20 text-red-400"
-                    }`}
-                  >
-                    {exp.valid ? "VALID" : "INVALID"}
+                {/* 6 PHYSICAL PROPERTIES GRID */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 p-4 rounded-2xl bg-zinc-950/40 border border-zinc-800/40 text-xs">
+                  <div>
+                    <p className="text-zinc-500 mb-0.5">Target Tg</p>
+                    <p className="text-zinc-200 font-medium font-mono">{exp.tg} °C</p>
                   </div>
-
-                  <p className="mt-4 text-zinc-500 text-sm">
-                    Predicted Tg
-                  </p>
-
-                  <p className="text-xl font-bold text-white">
-                    {exp.predicted_tg?.toFixed(2)}
-                  </p>
+                  <div>
+                    <p className="text-zinc-500 mb-0.5">Target Td</p>
+                    <p className="text-zinc-200 font-medium font-mono">{exp.td} °C</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-500 mb-0.5">Target Cp</p>
+                    <p className="text-zinc-200 font-medium font-mono">{exp.cp}</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-500 mb-0.5">Target TSb</p>
+                    <p className="text-zinc-200 font-medium font-mono">{exp.tsb} MPa</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-500 mb-0.5">Young's Mod.</p>
+                    <p className="text-zinc-200 font-medium font-mono">{exp.ym} GPa</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-500 mb-0.5">Density (ρ)</p>
+                    <p className="text-zinc-200 font-medium font-mono">{exp.rho}</p>
+                  </div>
                 </div>
-
               </div>
+
+              {/* BOTTOM: NESTED GENERATED CANDIDATES STACK */}
+              {exp.status === "processing" && (
+                <div className="p-4 rounded-xl bg-yellow-950/10 border border-yellow-900/20 text-yellow-500 text-xs animate-pulse flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-ping" />
+                  Generative model is currently sampling the latent space...
+                </div>
+              )}
+
+              {exp.status === "failed" && (
+                <div className="p-4 rounded-xl bg-red-950/10 border border-red-900/20 text-red-400 text-xs">
+                  Critical error encountered during model inference pipeline.
+                </div>
+              )}
+
+              {exp.status === "done" && exp.molecules && exp.molecules.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                    Generated Compounds Stack ({exp.molecules.length})
+                  </h4>
+                  
+                  {/* Сетка со сгенерированными структурами */}
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                    {exp.molecules.map((mol) => (
+                      <div 
+                        key={mol.id} 
+                        className="p-4 rounded-2xl bg-zinc-950 border border-zinc-800/60 flex flex-col sm:flex-row gap-4 items-center justify-between"
+                      >
+                        <div className="space-y-2 min-w-0 flex-1 w-full">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide border ${
+                              mol.valid 
+                                ? "bg-green-950/60 text-green-400 border-green-800/50" 
+                                : "bg-red-950/60 text-red-400 border-red-800/50"
+                            }`}>
+                              {mol.valid ? "SMILES Valid" : "Invalid Layout"}
+                            </span>
+                            
+                            {mol.predicted_tg !== undefined && mol.predicted_tg !== null && (
+                              <span className="text-[11px] text-zinc-400">
+                                Pred. Tg: <strong className="text-zinc-200 font-mono">{mol.predicted_tg.toFixed(1)} °C</strong>
+                              </span>
+                            )}
+                          </div>
+                          
+                          <p className="font-mono text-xs text-zinc-300 break-all select-all bg-zinc-900/40 p-2 rounded-lg border border-zinc-900">
+                            {mol.smiles}
+                          </p>
+                        </div>
+                        
+                        {/* Рендеринг 2D структуры полимера */}
+                        <div className="shrink-0 bg-white p-1 rounded-xl shadow-inner border border-zinc-800">
+                          <MoleculeViewer smiles={mol.smiles} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
-
       </div>
     </Container>
   )
