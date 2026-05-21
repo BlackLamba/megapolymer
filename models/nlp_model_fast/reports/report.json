@@ -1,0 +1,9 @@
+{
+  "model": "rubert-tiny2 fine-tuned for NER",
+  "epochs": 50,
+  "best_val_f1": 0.6143614964546268,
+  "final_train_loss": 0.12384318415775694,
+  "final_val_loss": 0.33468419929403975,
+  "final_precision": 0.6000723875197082,
+  "final_recall": 0.5822120451257982
+}
